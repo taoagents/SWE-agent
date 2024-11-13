@@ -13,15 +13,16 @@ import time
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path, PurePath
-from typing import Any
+from typing import Any, Optional
 
 import gymnasium as gym
 import yaml
-from ghapi.all import GhApi
 from git import Repo
+from github import Auth, Github, PullRequest
 from simple_parsing.helpers.serialization.serializable import FrozenSerializable
 from swebench.harness.constants import MAP_REPO_VERSION_TO_SPECS
 from swebench.harness.utils import get_environment_yml, get_requirements
+
 
 import docker
 import docker.errors
@@ -1403,7 +1404,7 @@ class SWEEnv(gym.Env):
             raise RuntimeError(msg)
         return observation
 
-    def open_pr(self, *, trajectory, _dry_run: bool = False) -> None:
+    def open_pr(self, *, trajectory, _dry_run: bool = False) -> Optional[PullRequest.PullRequest]:
         """Create PR to repository
 
         Args:
@@ -1486,22 +1487,25 @@ class SWEEnv(gym.Env):
             f"to close [#{issue.number}]({issue_url}) ({issue.title}).\n\nCloses #{issue.number}."
         )
         body += "\n\n" + format_trajectory_markdown(trajectory)
-        api = GhApi(token=self._github_token)
+        
         if not _dry_run:
-            pr_info = api.pulls.create(  # type: ignore
-                owner=owner,
-                repo=repo,
-                title=f"SWE-agent[bot] PR to fix: {issue.title}",
-                head=head,
-                base="main",
-                body=body,
-                draft=True,
+            api = Github(
+                auth=Auth.Token(self._github_token),
             )
+            repo = api.get_repo(repo)
+            pr = repo.create_pull(
+                base="main",
+                head=head,
+                title=f"SWE-agent[bot] PR to fix: {issue.title}",
+                body=body,
+                draft=True)
             self.logger.info(
-                f"🎉 PR created as a draft at {pr_info.html_url}. Please review it carefully, push "
+                f"🎉 PR created as a draft at {pr.html_url}. Please review it carefully, push "
                 "any required changes onto the branch and then click "
                 "'Ready for Review' to bring it to the attention of the maintainers.",
             )
+            return pr
+        return None
 
     def read_file(self, path: str | PurePath) -> str:
         """Read file contents from container
