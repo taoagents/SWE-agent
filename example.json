@@ -1,0 +1,6 @@
+{
+    "problem_statement": "Default inbound correlation-id validator is incorrect?\n```python\r\nfrom asgi_correlation_id.middleware import is_valid_uuid4\r\n\r\n# returns True but I expected it to return False since \r\n# '00000000000000000000000000000000' is not a valid version 4 UUID\r\nis_valid_uuid4(uuid.UUID(int=0).hex)  \r\n```\r\n\r\nThis is because `uuid.UUID('00000000000000000000000000000000', version=4)` returns `UUID('00000000-0000-4000-8000-000000000000')`.\r\n\r\nI suspect this should rather be something like `UUID(uuid_).version == 4`\n",
+    "patch": "diff --git a/asgi_correlation_id/middleware.py b/asgi_correlation_id/middleware.py\nindex 72a6c70..f1fe502 100644\n--- a/asgi_correlation_id/middleware.py\n+++ b/asgi_correlation_id/middleware.py\n@@ -19,7 +19,7 @@ def is_valid_uuid4(uuid_: str) -> bool:\n     Check whether a string is a valid v4 uuid.\n     \"\"\"\n     try:\n-        return bool(UUID(uuid_, version=4))\n+        return UUID(uuid_).version == 4\n     except ValueError:\n         return False\n \n",
+    "s3_repo_url": "s3://codeatcommits/snok-asgi-correlation-id-c9927f37bebfeb5ac9ea94e99cf58d8a3d84cad8.zip",
+    "event_id": "asT038lqG"
+  }

@@ -50,6 +50,8 @@ class Subroutine(FrozenSerializable):
 class AgentConfig(FrozenSerializable):
     system_template: str
     instance_template: str
+    # Presented when we want to create a test file
+    make_test_template: str
     next_step_template: str | None = None  # defaults to instance_template
     next_step_no_output_template: str | None = None  # defaults to next_step_template
     strategy_template: str | None = None
@@ -193,6 +195,8 @@ class AgentArguments(FlattenedAccess, FrozenSerializable):
     """Configure the agent's behaviour (templates, parse functions, blocklists, ...)."""
 
     model: ModelArguments = None
+    mode: str = None # can be "make_test"
+    solution_patch: str = None
 
     # Policy can only be set via config yaml file from command line
     config_file: Path | None = None
@@ -204,6 +208,8 @@ class AgentArguments(FlattenedAccess, FrozenSerializable):
             config = AgentConfig.load_yaml(self.config_file)
             object.__setattr__(self, "config", config)
         assert self.config is not None  # mypy
+        if self.mode is None:
+            self.mode = "normal"
         for subroutine in getattr(self.config, "subroutines", {}).values():
             model_args = subroutine.model
             object.__setattr__(
@@ -276,6 +282,10 @@ class Agent:
         self.system_args = {
             "command_docs": self.config.command_docs,
             **self.config.env_variables,
+        }
+        # TODO: CLEAR THIS UP
+        self.make_test_args = {
+            "solution_patch": args.solution_patch,
         }
         self.instance_args = None
         self._parse_command_patterns()
@@ -668,7 +678,10 @@ class Agent:
         # Determine observation template based on what prior observation was
         if self.history[-1]["role"] == "system" or self.history[-1].get("is_demo", False):
             # Show instance template if prev. obs. was initial system message
-            templates = [self.config.instance_template]
+            if self._args.mode == "make_test":
+                templates = [self.config.make_test_template]
+            else:
+                templates = [self.config.instance_template]
             if self.config.strategy_template is not None:
                 templates.append(self.config.strategy_template)
         elif observation is None or observation.strip() == "":
@@ -686,6 +699,7 @@ class Agent:
                     **self.instance_args,
                     **self.system_args,
                     **state_vars,
+                    **self.make_test_args,
                     observation=(observation if observation is not None else ""),
                     **self._forwarded_vars,
                 ),
