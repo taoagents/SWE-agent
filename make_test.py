@@ -19,6 +19,7 @@ script_arguments = ScriptArguments(
             data_path=f"text://{ISSUE_DESC}",
             repo_path=str(REPO_PATH),
             verbose=True,
+            environment_setup="config/environment_setup/py310_default.yaml",
         ),
         skip_existing=False,
         agent=AgentArguments(
@@ -39,6 +40,8 @@ script_arguments = ScriptArguments(
 
 env = SWEEnv(script_arguments.environment)
 observation, info = env.reset(0)
+
+print(info)
 
 agent = Agent("primary", script_arguments.agent)
 trajectories_dir = Path.cwd() / "trajectories"

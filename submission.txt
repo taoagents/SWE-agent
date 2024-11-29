@@ -1,0 +1,34 @@
+
+diff --git a/test_middleware.py b/test_middleware.py
+new file mode 100644
+index 0000000..ba32b12
+--- /dev/null
++++ b/test_middleware.py
+@@ -0,0 +1,27 @@
++import unittest
++from uuid import UUID
++from asgi_correlation_id.middleware import is_valid_uuid4
++
++class TestIsValidUUID4(unittest.TestCase):
++    def test_valid_uuid4(self):
++        # A valid version 4 UUID should return True
++        valid_uuid4 = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
++        self.assertTrue(is_valid_uuid4(valid_uuid4))
++
++    def test_invalid_uuid4_format(self):
++        # An invalid UUID format should return False
++        invalid_format = 'not-a-uuid'
++        self.assertFalse(is_valid_uuid4(invalid_format))
++
++    def test_valid_uuid_non_v4(self):
++        # A valid UUID which is not version 4 should return False
++        valid_uuid1 = UUID('6fa459ea-ee8a-3ca4-894e-db77e160355e').hex  # Version 3 UUID
++        self.assertFalse(is_valid_uuid4(valid_uuid1))
++
++    def test_invalid_zero_uuid(self):
++        # '00000000000000000000000000000000' is not a valid version 4 UUID, should return False
++        invalid_zero_uuid = UUID(int=0).hex
++        self.assertFalse(is_valid_uuid4(invalid_zero_uuid))
++
++if __name__ == '__main__':
++    unittest.main()
