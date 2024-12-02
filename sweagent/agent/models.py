@@ -227,8 +227,8 @@ class OpenAIModel(BaseModel):
         },
         "gpt-4o-2024-05-13": {
             "max_context": 128_000,
-            "cost_per_input_token": 5e-06,
-            "cost_per_output_token": 15e-06,
+            "cost_per_input_token": 2.5e-06,
+            "cost_per_output_token": 10e-06,
         },
         "gpt-4o-mini-2024-07-18": {
             "max_context": 128_000,
