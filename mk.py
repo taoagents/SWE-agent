@@ -2,21 +2,23 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import List, Dict
+import json
 
-def run_tests(container_name: str) -> List[str]:
+def run_tests(container_name: str) -> Dict[str, str]:
     """Run tests inside the container and return a list of test results."""
-    subprocess.run(f"docker exec {container_name} pip install pytest-json-report", shell=True)
-    cmd = f"docker exec {container_name} pytest --json-report --json-report-file=report_b.json"
-    print("about to run tests")
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    print(result)
-    tests_output = result.stdout
+    subprocess.run(f"docker exec --workdir /app {container_name} pytest --json-report --json-report-file=/tmp/report.json --json-report-omit collectors", shell=True)
+    subprocess.run(f"docker cp {container_name}:/tmp/report.json report.json", shell=True)
+    with open('report.json') as f:
+        data = json.load(f)
+
+    print("successfully loaded json")
+    
     # Parse the output to get the list of test names and their statuses
     # This is a simplified example; parsing may need to be adjusted based on output format
-    tests = []
-    for line in tests_output.splitlines():
-        if "test" in line:
-            tests.append(line.strip())
+    tests = {}
+    for test in data["tests"]:
+        if test["outcome"] in ["passed", "failed"]:
+            tests[test["nodeid"]] = test["outcome"].lower()
     return tests
 
 def apply_patch(container_name: str, patch: str):
@@ -28,13 +30,25 @@ def apply_patch(container_name: str, patch: str):
     subprocess.run(f"docker cp {temp_patch_path} {container_name}:{container_patch_path}", shell=True)
     subprocess.run(f"docker exec {container_name} git apply {container_patch_path}", shell=True)
     Path(temp_patch_path).unlink()
+    print("patch applied")
 
-def compare_test_results(before: List[str], after: List[str]) -> Dict[str, List[str]]:
+def compare_test_results(before: Dict[str, str], after: Dict[str, str]) -> Dict[str, List[str]]:
     """Compare test results before and after patches are applied."""
-    pass_before = set(test for test in before if "OK" in test)
-    fail_before = set(test for test in before if "FAIL" in test)
-    pass_after = set(test for test in after if "OK" in test)
-    fail_after = set(test for test in after if "FAIL" in test)
+    pass_before = set()
+    fail_before = set()
+    pass_after = set()
+    fail_after = set()
+
+    for test, status in before.items():
+        if status == "passed":
+            pass_before.add(test)
+        elif status == "failed":
+            fail_before.add(test)
+    for test, status in after.items():
+        if status == "passed":
+            pass_after.add(test)
+        elif status == "failed":
+            fail_after.add(test)
 
     return {
         "PASS_TO_PASS": list(pass_before & pass_after),
@@ -55,14 +69,17 @@ def analyze_patches(code_patch: str, test_patch: str, codebase: Path) -> Dict[st
     subprocess.run(f"docker exec {container_name} git init /app", shell=True)
     # Step 3: Initialize the python environment
     subprocess.run(f"docker exec {container_name} pip install -e /app", shell=True)
+    subprocess.run(f"docker exec {container_name} pip install pytest-json-report", shell=True)
+    # TODO: Install additional packages if needed
     # Step 4: Run the current tests
     tests_before = run_tests(container_name)
-    print(tests_before)
     # Step 5: Apply the code and test patches
     apply_patch(container_name, code_patch)
     apply_patch(container_name, test_patch)
     # Step 6: Run the tests again
     tests_after = run_tests(container_name)
+    print("length of tests before", len(tests_before))
+    print("length of tests after", len(tests_after))
     # Step 7: Compare test results and return the outcome
     result = compare_test_results(tests_before, tests_after)
     # Clean up
