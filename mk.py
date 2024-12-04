@@ -28,7 +28,7 @@ def apply_patch(container_name: str, patch: str):
         temp_patch_path = temp_patch.name
     container_patch_path = f"/tmp/{Path(temp_patch_path).name}"
     subprocess.run(f"docker cp {temp_patch_path} {container_name}:{container_patch_path}", shell=True)
-    subprocess.run(f"docker exec {container_name} git apply {container_patch_path}", shell=True)
+    subprocess.run(f"docker exec --workdir /app {container_name} git apply {container_patch_path}", shell=True)
     Path(temp_patch_path).unlink()
     print("patch applied")
 
@@ -55,6 +55,8 @@ def compare_test_results(before: Dict[str, str], after: Dict[str, str]) -> Dict[
         "PASS_TO_FAIL": list(pass_before & fail_after),
         "FAIL_TO_PASS": list(fail_before & pass_after),
         "FAIL_TO_FAIL": list(fail_before & fail_after),
+        "NEW_PASS": list(pass_after - pass_before - fail_before),
+        "NEW_FAIL": list(fail_after - pass_before - fail_before),
     }
 
 def analyze_patches(code_patch: str, test_patch: str, codebase: Path) -> Dict[str, List[str]]:
