@@ -1,6 +1,13 @@
 {
-    "problem_statement": "Default inbound correlation-id validator is incorrect?\n```python\r\nfrom asgi_correlation_id.middleware import is_valid_uuid4\r\n\r\n# returns True but I expected it to return False since \r\n# '00000000000000000000000000000000' is not a valid version 4 UUID\r\nis_valid_uuid4(uuid.UUID(int=0).hex)  \r\n```\r\n\r\nThis is because `uuid.UUID('00000000000000000000000000000000', version=4)` returns `UUID('00000000-0000-4000-8000-000000000000')`.\r\n\r\nI suspect this should rather be something like `UUID(uuid_).version == 4`\n",
-    "patch": "diff --git a/asgi_correlation_id/middleware.py b/asgi_correlation_id/middleware.py\nindex 72a6c70..f1fe502 100644\n--- a/asgi_correlation_id/middleware.py\n+++ b/asgi_correlation_id/middleware.py\n@@ -19,7 +19,7 @@ def is_valid_uuid4(uuid_: str) -> bool:\n     Check whether a string is a valid v4 uuid.\n     \"\"\"\n     try:\n-        return bool(UUID(uuid_, version=4))\n+        return UUID(uuid_).version == 4\n     except ValueError:\n         return False\n \n",
-    "s3_repo_url": "s3://codeatcommits/snok-asgi-correlation-id-c9927f37bebfeb5ac9ea94e99cf58d8a3d84cad8.zip",
-    "event_id": "asT038lqG"
+  "problem_statement": "Relax typing strictness for Plot.theme\nPlot.theme currently accepts a `dict[str, Any]`, which unfortunately throws a pytype typing error when passed another similar mapping, like an immutable dict.\r\n\r\n```python\r\ndef accepts_dict(d: dict[str, Any]) -> None:\r\n    print(d)\r\n\r\naccepts_dict(immutabledict.immutabledict({'a': 1}))\r\n# Error: Function accepts_dict was called with the wrong arguments [wrong-arg-types]\r\n#        Expected: (d: Dict[str, Any], ...)\r\n#        Actually passed: (d: immutabledict.immutabledict[nothing, nothing])\r\n```\r\n\r\nUsing collections.abc.Mapping doesn't throw an error.\r\n\r\n```python\r\nfrom collections.abc import Mapping\r\n\r\ndef accepts_mapping(d: Mappingf[str, Any]) -> None:\r\n    print(d)\r\n\r\naccepts_mapping(immutabledict.immutabledict({'a': 1}))\r\n```\r\n\r\nWould you mind relaxing the type specificity for this? Thanks!\n",
+  "patch": "diff --git a/seaborn/_core/plot.py b/seaborn/_core/plot.py\nindex 14348e357f..c9dc61c8a7 100644\n--- a/seaborn/_core/plot.py\n+++ b/seaborn/_core/plot.py\n@@ -9,7 +9,7 @@\n import textwrap\n from contextlib import contextmanager\n from collections import abc\n-from collections.abc import Callable, Generator\n+from collections.abc import Callable, Generator, Mapping\n from typing import Any, List, Literal, Optional, cast\n from xml.etree import ElementTree\n \n@@ -859,7 +859,7 @@ def layout(\n \n     # TODO def legend (ugh)\n \n-    def theme(self, config: dict[str, Any], /) -> Plot:\n+    def theme(self, config: Mapping[str, Any], /) -> Plot:\n         \"\"\"\n         Control the appearance of elements in the plot.\n \n",
+  "s3_repo_url": "s3://codeatcommits/mwaskom-seaborn-ae7acf0ce6e30ae773f513e0ccadbb7341cf5e90.zip",
+  "event_id": "cgpZEreSS",
+  "environment_setup": {
+    "python": "3.10",
+    "install": "uv pip install -e . || (python -m pip install --upgrade pip && python -m pip install -e .)",
+    "pip_packages": [
+      "starlette"
+    ]
   }
+}

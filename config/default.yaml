@@ -70,7 +70,7 @@ make_test_template: |-
   Here is the solution patch to the issue:
   {solution_patch}
 
-  You must create a test file that tests the changes made in the solution patch. The tests should be written in Python and should test the changes made to the code base. You can write multiple tests in the test file. The tests should fail before the patch is applied and pass after the patch is applied. The tests should address the bug mentioned in the issue.
+  You must create a test file that tests the changes made in the solution patch. The tests should be written in Python and should test the changes made to the code base. You can write multiple tests in the test file. The tests should address the bug mentioned in the issue. The tests should fail if the bug is not fixed and pass if the bug is fixed.
 
   INSTRUCTIONS:
   Now, you're going to make tests for this issue on your own. Your terminal session has started and you're in the repository's root directory. You can use any bash commands or the special interface to help you. Edit all the files you need to and run any checks or tests that you want.

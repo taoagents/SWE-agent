@@ -1,34 +1,33 @@
 
-diff --git a/test_middleware.py b/test_middleware.py
-new file mode 100644
-index 0000000..ba32b12
---- /dev/null
-+++ b/test_middleware.py
-@@ -0,0 +1,27 @@
-+import unittest
-+from uuid import UUID
-+from asgi_correlation_id.middleware import is_valid_uuid4
-+
-+class TestIsValidUUID4(unittest.TestCase):
-+    def test_valid_uuid4(self):
-+        # A valid version 4 UUID should return True
-+        valid_uuid4 = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
-+        self.assertTrue(is_valid_uuid4(valid_uuid4))
-+
-+    def test_invalid_uuid4_format(self):
-+        # An invalid UUID format should return False
-+        invalid_format = 'not-a-uuid'
-+        self.assertFalse(is_valid_uuid4(invalid_format))
-+
-+    def test_valid_uuid_non_v4(self):
-+        # A valid UUID which is not version 4 should return False
-+        valid_uuid1 = UUID('6fa459ea-ee8a-3ca4-894e-db77e160355e').hex  # Version 3 UUID
-+        self.assertFalse(is_valid_uuid4(valid_uuid1))
-+
-+    def test_invalid_zero_uuid(self):
-+        # '00000000000000000000000000000000' is not a valid version 4 UUID, should return False
-+        invalid_zero_uuid = UUID(int=0).hex
-+        self.assertFalse(is_valid_uuid4(invalid_zero_uuid))
-+
-+if __name__ == '__main__':
-+    unittest.main()
+diff --git a/seaborn/_core/plot.py b/seaborn/_core/plot.py
+index 14348e3..222e1aa 100644
+--- a/seaborn/_core/plot.py
++++ b/seaborn/_core/plot.py
+@@ -9,7 +9,7 @@ import itertools
+ import textwrap
+ from contextlib import contextmanager
+ from collections import abc
+-from collections.abc import Callable, Generator
++from collections.abc import Callable, Generator, Mapping
+ from typing import Any, List, Literal, Optional, cast
+ from xml.etree import ElementTree
+ 
+@@ -859,7 +859,7 @@ class Plot:
+ 
+     # TODO def legend (ugh)
+ 
+-    def theme(self, config: dict[str, Any], /) -> Plot:
++    def theme(self, config: Mapping[str, Any], /) -> Plot:
+         """
+         Control the appearance of elements in the plot.
+ 
+@@ -881,7 +881,8 @@ class Plot:
+         """
+         new = self._clone()
+ 
+-        rc = mpl.RcParams(config)
++        print(f"Config type: {type(config)}; Config content: {config}")
++        rc = mpl.RcParams(dict(config))  # Convert Mapping to a regular dict
+         new._theme.update(rc)
+ 
+         return new

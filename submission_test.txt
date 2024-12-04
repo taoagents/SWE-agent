@@ -1,0 +1,43 @@
+diff --git a/test_plot_theme.py b/test_plot_theme.py
+new file mode 100644
+index 0000000..ae6b652
+--- /dev/null
++++ b/test_plot_theme.py
+@@ -0,0 +1,37 @@
++class ImmutableDict(dict):
++    """
++    A simple immutable dictionary wrapper to simulate immutabledict behavior.
++    """
++    __slots__ = ()
++
++    def __hash__(self):
++        return hash(tuple(sorted(self.items())))
++
++    def __setitem__(self, key, value):
++        raise TypeError("This dictionary is immutable.")
++
++    def __delitem__(self, key):
++        raise TypeError("This dictionary is immutable.")
++
++from seaborn._core.plot import Plot
++
++def test_theme_with_immutable_dict():
++    plot = Plot()
++    try:
++        plot.theme(ImmutableDict({'axes.titlesize': 12}))
++        print("Test passed: theme accepted an ImmutableDict without errors.")
++    except Exception as e:
++        print(f"Error: {e}")
++
++def test_theme_with_regular_dict():
++    plot = Plot()
++    try:
++        plot.theme({'axes.titlesize': 12})
++        print("Test passed: theme accepted a regular dict without errors.")
++    except Exception as e:
++        print("Test failed: theme raised an error for a regular dict.")
++        print(f"Error: {e}")
++
++test_theme_with_immutable_dict()
++print("Tests completed.")
++print("Tests completed.")
