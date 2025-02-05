@@ -3,10 +3,12 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import os
 from collections import defaultdict
 from dataclasses import dataclass, fields
 from pathlib import Path
 
+import requests
 import together
 from anthropic import AI_PROMPT, HUMAN_PROMPT, Anthropic, AnthropicBedrock
 from groq import Groq
@@ -117,6 +119,9 @@ class BaseModel:
             self.model_metadata = MODELS[self.api_model]
         elif args.model_name.startswith("groq:"):
             self.api_model = args.model_name.split("groq:", 1)[1]
+            self.model_metadata = MODELS[self.api_model]
+        elif args.model_name.startswith("corcel:"):
+            self.api_model = args.model_name.split("corcel:", 1)[1]
             self.model_metadata = MODELS[self.api_model]
         else:
             msg = f"Unregistered model ({args.model_name}). Add model name to MODELS metadata to {self.__class__}"
@@ -591,6 +596,67 @@ class BedrockModel(BaseModel):
             msg = f"{self.api_model} is not supported!"
             raise NotImplementedError(msg)
 
+class CorcelModel(BaseModel):
+    MODELS = {
+        "gpt-4o": {
+            "max_context": 128_000,
+            "cost_per_input_token": 1e-6,
+            "cost_per_output_token": 1e-6,
+        },
+        "llama-3-1-8b": {
+            "cost_per_input_token": 0.125e-6,
+            "cost_per_output_token": 0.125e-6,
+        },
+        "llama-3-1-70b": {
+            "cost_per_input_token": 0.25e-6,
+            "cost_per_output_token": 0.25e-6,
+        },
+    }
+    CORCEL_URL = "https://api.corcel.io/v1/chat/completions"
+
+    def __init__(self, args: ModelArguments, commands: list[Command]):
+        super().__init__(args, commands)
+
+    def history_to_messages(
+        self,
+        history: list[dict[str, str]],
+        is_demonstration: bool = False,
+    ) -> str | list[dict[str, str]]:
+        # Remove system messages if it is a demonstration
+        if is_demonstration:
+            history = [entry for entry in history if entry["role"] != "system"]
+            return "\n".join([entry["content"] for entry in history])
+        # Return history components with just role, content fields
+        return [{k: v for k, v in entry.items() if k in ["role", "content"]} for entry in history]
+
+    @retry(
+        wait=wait_random_exponential(min=1, max=15),
+        reraise=True,
+        stop=stop_after_attempt(_MAX_RETRIES),
+        retry=retry_if_not_exception_type((CostLimitExceededError, RuntimeError)),
+    )
+    def query(self, history: list[dict[str, str]]) -> str:
+        payload = {
+            "model": self.api_model,
+            "temperature": self.args.temperature,
+            "max_tokens": 4096,
+            "messages": self.history_to_messages(history),
+            "stream": False
+        }
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "Authorization": keys_config["CORCEL_API_KEY"]
+        }
+
+        response_json = requests.post(CorcelModel.CORCEL_URL, json=payload, headers=headers).json()
+        try:
+            model_text = response_json["choices"][0]["message"]["content"]
+        except KeyError as e:
+            print(f"ERROR when trying to parse model output: {e}. JSON model response: {response_json}")
+            return "Error receiving response. Please try again"
+        return model_text
+
 
 def anthropic_history_to_messages(
     model: AnthropicModel | BedrockModel,
@@ -1029,6 +1095,8 @@ def get_model(args: ModelArguments, commands: list[Command] | None = None):
         return OllamaModel(args, commands)
     elif args.model_name.startswith("deepseek"):
         return DeepSeekModel(args, commands)
+    elif args.model_name.startswith("corcel"):
+        return CorcelModel(args, commands)
     elif args.model_name in TogetherModel.SHORTCUTS:
         return TogetherModel(args, commands)
     elif args.model_name in GroqModel.SHORTCUTS:
