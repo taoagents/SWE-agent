@@ -835,7 +835,7 @@ class SWEEnv(gym.Env):
             raise RuntimeError(msg) from e
         t0 = time.time()
         self.container_obj = None
-        while time.time() - t0 < 60:
+        while time.time() - t0 < 180:
             try:
                 self.container_obj = client.containers.get(self.container_name)
             except docker.errors.NotFound:
