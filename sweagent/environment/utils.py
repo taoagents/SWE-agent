@@ -985,6 +985,15 @@ def get_associated_commit_urls(org: str, repo: str, issue_number: str, *, token:
 def remove_triple_backticks(text: str) -> str:
     return "\n".join(line.removeprefix("```") for line in text.splitlines())
 
+def format_metadata_markdown(metadata: str):
+    parts = [
+        "<details>",
+        "<summary>Metadata</summary>",
+        metadata,
+        "</details>"
+    ]
+
+    return "\n".join(parts)
 
 def format_trajectory_markdown(trajectory: list[dict[str, str]]):
     """Format a trajectory as a markdown string for use in gh PR description."""

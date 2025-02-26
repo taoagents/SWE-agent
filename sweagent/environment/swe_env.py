@@ -44,6 +44,7 @@ from sweagent.environment.utils import (
     attach_network_interface_to_container,
     copy_anything_to_container,
     copy_file_to_container,
+    format_metadata_markdown,
     format_trajectory_markdown,
     get_container,
     get_docker_compose,
@@ -1404,7 +1405,7 @@ class SWEEnv(gym.Env):
             raise RuntimeError(msg)
         return observation
 
-    def open_pr(self, *, trajectory, _dry_run: bool = False) -> Optional[PullRequest.PullRequest]:
+    def open_pr(self, *, metadata, trajectory, _dry_run: bool = False) -> Optional[PullRequest.PullRequest]:
         """Create PR to repository
 
         Args:
@@ -1420,7 +1421,7 @@ class SWEEnv(gym.Env):
         except InvalidGithubURL as e:
             msg = "Data path must be a github issue URL if --open_pr is set."
             raise ValueError(msg) from e
-        branch_name = f"swe-agent-fix-#{issue.number}-" + str(random.random())[2:10]
+        branch_name = f"agentao-fix-#{issue.number}-" + str(random.random())[2:10]
 
         self.communicate_with_handling(
             input="rm -f model.patch",
@@ -1480,25 +1481,28 @@ class SWEEnv(gym.Env):
                 "Failed to push branch to remote. Please check your token and permissions. "
                 "You might want to push to a fork with the push_gh_repo_url option."
             ),
-            timeout_duration=10,
+            timeout_duration=30,
         )
+        print("Branch is pushed")
         body = (
-            f"This is a PR opened by AI tool [SWE Agent](https://github.com/princeton-nlp/SWE-agent/) "
-            f"to close [#{issue.number}]({issue_url}) ({issue.title}).\n\nCloses #{issue.number}."
+            f"This is a PR opened by AI tool [AgenTao](https://agentao.vercel.app/) "
+            f"to close [#{issue.number}]({issue_url}) ({issue.title}).\n\n@taoagents closes #{issue.number}."
         )
-        body += "\n\n" + format_trajectory_markdown(trajectory)
+        body += "\n\n" + format_metadata_markdown(metadata)
         
         if not _dry_run:
             api = Github(
                 auth=Auth.Token(self._github_token),
             )
-            repo = api.get_repo(repo)
+            print(repo)
+            repo = api.get_repo(f"{owner}/{repo}")
             pr = repo.create_pull(
                 base="main",
                 head=head,
-                title=f"SWE-agent[bot] PR to fix: {issue.title}",
+                title=f"AgenTao[bot] PR to fix: {issue.title}",
                 body=body,
-                draft=True)
+                draft=False
+            )
             self.logger.info(
                 f"🎉 PR created as a draft at {pr.html_url}. Please review it carefully, push "
                 "any required changes onto the branch and then click "
